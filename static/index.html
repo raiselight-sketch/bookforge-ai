@@ -60,16 +60,40 @@
 
         <!-- ── 평가 컨트롤 ── -->
         <section id="section-control" class="section hidden">
-            <h2 class="section-title">⚙️ 평가 설정</h2>
-            <div class="control-panel">
-                <div class="control-group">
-                    <label for="rounds-select">평가 라운드 수</label>
-                    <select id="rounds-select" class="select-input">
-                        <option value="1">1 라운드 (빠른 평가)</option>
-                        <option value="2">2 라운드 (교차 검토 포함)</option>
-                        <option value="3" selected>3 라운드 (완전 평가)</option>
-                    </select>
+            <h2 class="section-title">⚙️ 평가 모드</h2>
+            <div class="eval-modes" id="eval-modes">
+                <div class="eval-mode-card selected" data-mode="quick" onclick="selectMode(this)">
+                    <div class="mode-icon">⚡</div>
+                    <div class="mode-name">빠른 평가</div>
+                    <div class="mode-desc">핵심 문제점만 빠르게 파악</div>
+                    <ul class="mode-features">
+                        <li>1라운드 독립 평가</li>
+                        <li>주요 문제점 3~5개</li>
+                        <li>예상 시간: 2~5분</li>
+                    </ul>
                 </div>
+                <div class="eval-mode-card" data-mode="standard" onclick="selectMode(this)">
+                    <div class="mode-icon">📝</div>
+                    <div class="mode-name">중간 평가</div>
+                    <div class="mode-desc">교차 검토로 균형 잡힌 피드백</div>
+                    <ul class="mode-features">
+                        <li>2라운드 (평가 + 교차검토)</li>
+                        <li>에이전트 간 의견 비교</li>
+                        <li>예상 시간: 5~15분</li>
+                    </ul>
+                </div>
+                <div class="eval-mode-card" data-mode="detailed" onclick="selectMode(this)">
+                    <div class="mode-icon">🔬</div>
+                    <div class="mode-name">자세한 평가</div>
+                    <div class="mode-desc">3라운드 완전 분석 + 개선안</div>
+                    <ul class="mode-features">
+                        <li>3라운드 (평가→검토→개선)</li>
+                        <li>개선된 원고 자동 생성</li>
+                        <li>예상 시간: 15~30분</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top:20px; text-align:center;">
                 <button id="btn-evaluate" class="btn btn-accent btn-lg" onclick="startEvaluation()">
                     🚀 평가 시작
                 </button>
@@ -103,6 +127,14 @@
                     </div>
                 </div>
                 <div id="progress-log" class="progress-log"></div>
+                <div class="progress-controls" id="progress-controls" style="display:flex; gap:12px; margin-top:16px; justify-content:center;">
+                    <button id="btn-pause" class="btn btn-outline" onclick="togglePause()" style="min-width:120px;">
+                        ⏸️ 일시정지
+                    </button>
+                    <button id="btn-cancel" class="btn btn-outline" onclick="cancelEvaluation()" style="color:var(--accent-danger); border-color:rgba(239, 68, 68, 0.3);">
+                        🛑 평가 취소
+                    </button>
+                </div>
             </div>
         </section>
 

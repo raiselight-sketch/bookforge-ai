@@ -497,6 +497,90 @@ body {
     color: #f87171;
 }
 
+/* ── 평가 모드 카드 ── */
+.eval-modes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.eval-mode-card {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+.eval-mode-card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.eval-mode-card.selected {
+    border-color: var(--accent-primary);
+    background: rgba(139, 92, 246, 0.08);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.eval-mode-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.eval-mode-card .mode-icon {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+}
+
+.eval-mode-card .mode-name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.eval-mode-card .mode-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+}
+
+.eval-mode-card .mode-features {
+    list-style: none;
+    padding: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.eval-mode-card .mode-features li {
+    padding: 3px 0;
+    padding-left: 14px;
+    position: relative;
+}
+
+.eval-mode-card .mode-features li::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .eval-modes { grid-template-columns: 1fr; }
+}
+
 /* ── 컨트롤 패널 ── */
 .control-panel {
     display: flex;

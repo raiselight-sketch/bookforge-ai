@@ -190,6 +190,24 @@ async def start_evaluation(filename: str, rounds: int = 1):
         "active_agents": len(orchestrator.agents),
     }
 
+@app.post("/api/evaluate/pause")
+async def pause_evaluation():
+    """평가 일시정지"""
+    await orchestrator.pause()
+    return {"status": "paused"}
+
+@app.post("/api/evaluate/resume")
+async def resume_evaluation():
+    """평가 재개"""
+    await orchestrator.resume()
+    return {"status": "running"}
+
+@app.post("/api/evaluate/cancel")
+async def cancel_evaluation():
+    """평가 취소"""
+    await orchestrator.cancel()
+    return {"status": "cancelled"}
+
 
 @app.get("/api/progress")
 async def get_progress():

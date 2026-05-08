@@ -42,17 +42,24 @@ class OllamaAgent(BaseAgent):
             },
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/api/chat",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=600),  # 로컬 모델은 시간이 걸릴 수 있음
-            ) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    raise RuntimeError(f"Ollama API 오류 ({resp.status}): {error_text}")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=600),  # 로컬 모델은 시간이 걸릴 수 있음
+                ) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        raise RuntimeError(f"Ollama API 오류 ({resp.status}): {error_text}")
 
-                data = await resp.json()
-                content = data.get("message", {}).get("content", "")
-                tokens = data.get("eval_count", 0) + data.get("prompt_eval_count", 0)
-                return content, tokens
+                    data = await resp.json()
+                    content = data.get("message", {}).get("content", "")
+                    tokens = data.get("eval_count", 0) + data.get("prompt_eval_count", 0)
+                    return content, tokens
+        except asyncio.TimeoutError:
+            raise RuntimeError("Ollama 응답 시간 초과 (600초). 모델이 너무 크거나 시스템 리소스가 부족합니다.")
+        except aiohttp.ClientConnectorError:
+            raise RuntimeError("Ollama 서버에 연결할 수 없습니다. Ollama가 실행 중인지 확인하세요.")
+        except Exception as e:
+            raise RuntimeError(f"Ollama 실행 중 예외 발생: {str(e)}")

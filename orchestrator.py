@@ -68,6 +68,35 @@ class Orchestrator:
         self._failed_agents: set = set()  # 실행 중 실패한 에이전트 추적
         self.state = PipelineState()
         self._progress_callbacks: list[callable] = []
+        self._pause_event = asyncio.Event()
+        self._pause_event.set()  # 기본 상태: 실행 중 (not paused)
+        self._cancelled = False
+
+    async def pause(self):
+        """파이프라인 일시정지"""
+        self._pause_event.clear()
+        self.state.status = "paused"
+        await self._notify_progress()
+
+    async def resume(self):
+        """파이프라인 재개"""
+        self._pause_event.set()
+        self.state.status = "running"
+        await self._notify_progress()
+
+    async def cancel(self):
+        """파이프라인 취소"""
+        self._cancelled = True
+        self._pause_event.set()  # 일시정지 중이면 해제
+        self.state.status = "cancelled"
+        await self._notify_progress()
+
+    async def _check_control(self) -> bool:
+        """일시정지/취소 체크포인트 — 루프 내에서 호출"""
+        if self._cancelled:
+            return False
+        await self._pause_event.wait()  # 일시정지 시 여기서 대기
+        return not self._cancelled
 
     async def initialize(self):
         """에이전트들을 초기화하고 연결 상태 확인"""
@@ -259,6 +288,7 @@ class Orchestrator:
 
         try:
             for round_num in range(1, num_rounds + 1):
+                if not await self._check_control(): break
                 self.state.current_round = round_num
                 round_result = RoundResult(round_number=round_num)
                 round_start = time.time()
@@ -268,6 +298,7 @@ class Orchestrator:
                 await self._notify_progress()
 
                 for ch_idx, chapter in enumerate(chapters):
+                    if not await self._check_control(): break
                     self.state.current_chapter = ch_idx + 1
                     self._update_progress()
                     await self._notify_progress()
@@ -315,35 +346,42 @@ class Orchestrator:
                         "evaluations": chapter_evals,
                     })
 
+                if self._cancelled: break
+
                 # ── 교차 검토 (라운드 2 이상) ──
                 if round_num >= 2 and len(self.agents) >= 2:
                     self.state.current_phase = "cross_reviewing"
                     await self._notify_progress()
 
                     for ch_idx, chapter in enumerate(chapters):
+                        if not await self._check_control(): break
                         self.state.current_chapter = ch_idx + 1
                         self._update_progress()
+                        await self._notify_progress()
 
                         prev_evals = round_result.evaluations[ch_idx]["evaluations"]
 
                         active_agents = self._get_active_agents()
                         review_tasks = []
+                        review_agent_names = []
                         for agent in active_agents:
                             self.state.current_agent = agent.name
                             await self._notify_progress()
                             review_tasks.append(
                                 agent.cross_review(chapter.content, prev_evals)
                             )
+                            review_agent_names.append(agent.name)
 
                         reviews = await asyncio.gather(*review_tasks, return_exceptions=True)
 
                         chapter_reviews = []
-                        for review in reviews:
+                        for i, review in enumerate(reviews):
+                            agent_name = review_agent_names[i]
                             if isinstance(review, Exception):
-                                self._handle_agent_error("unknown", str(review))
+                                self._handle_agent_error(agent_name, str(review))
                                 chapter_reviews.append(
                                     CrossReviewResult(
-                                        agent_name="unknown",
+                                        agent_name=agent_name,
                                         error=str(review),
                                     ).to_dict()
                                 )
@@ -354,6 +392,8 @@ class Orchestrator:
                             "chapter": chapter.title,
                             "reviews": chapter_reviews,
                         })
+
+                if self._cancelled: break
 
                 # ── 개선 실행 (마지막 라운드) ──
                 if round_num == num_rounds:
@@ -367,6 +407,7 @@ class Orchestrator:
                     improver = active_agents[0]
 
                     for ch_idx, chapter in enumerate(chapters):
+                        if not await self._check_control(): break
                         self.state.current_chapter = ch_idx + 1
                         self.state.current_agent = improver.name
                         self._update_progress()
@@ -393,8 +434,11 @@ class Orchestrator:
                 round_result.duration_seconds = round(time.time() - round_start, 2)
                 self.state.rounds.append(asdict(round_result))
 
-            self.state.status = "completed"
-            self.state.progress_percent = 100.0
+            if self._cancelled:
+                self.state.status = "cancelled"
+            else:
+                self.state.status = "completed"
+                self.state.progress_percent = 100.0
 
         except Exception as e:
             self.state.status = "error"

@@ -8,9 +8,16 @@ const state = {
     agents: {},
     manuscripts: [],
     selectedManuscript: null,
+    selectedMode: 'quick',
     ws: null,
     radarChart: null,
     isEvaluating: false,
+};
+
+const MODE_CONFIG = {
+    quick:    { rounds: 1, label: '⚡ 빠른 평가', desc: '1라운드' },
+    standard: { rounds: 2, label: '📝 중간 평가', desc: '2라운드 + 교차검토' },
+    detailed: { rounds: 3, label: '🔬 자세한 평가', desc: '3라운드 + 개선' },
 };
 
 const PHASE_LABELS = {
@@ -281,6 +288,13 @@ async function uploadFile(file) {
     }
 }
 
+// ── 평가 모드 선택 ──
+function selectMode(card) {
+    document.querySelectorAll('.eval-mode-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.selectedMode = card.dataset.mode;
+}
+
 // ── 평가 시작 ──
 async function startEvaluation() {
     if (!state.selectedManuscript) {
@@ -288,26 +302,73 @@ async function startEvaluation() {
         return;
     }
 
-    const rounds = parseInt(document.getElementById('rounds-select').value);
+    const mode = MODE_CONFIG[state.selectedMode];
     const btn = document.getElementById('btn-evaluate');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> 평가 시작 중...';
+    btn.innerHTML = `<span class="spinner"></span> ${mode.label} 시작 중...`;
     state.isEvaluating = true;
 
     document.getElementById('section-progress').classList.remove('hidden');
     document.getElementById('progress-log').innerHTML = '';
+    
+    // 버튼 초기화
+    const pauseBtn = document.getElementById('btn-pause');
+    pauseBtn.innerHTML = '⏸️ 일시정지';
+    pauseBtn.classList.replace('btn-primary', 'btn-outline');
 
-    const data = await api(`/evaluate/${state.selectedManuscript}?rounds=${rounds}`, {
+    const data = await api(`/evaluate/${state.selectedManuscript}?rounds=${mode.rounds}&mode=${state.selectedMode}`, {
         method: 'POST',
     });
 
     if (data && data.status === 'started') {
-        showToast(`🚀 ${data.active_agents}개 에이전트로 ${rounds}라운드 평가 시작!`);
-        addLogEntry(`평가 시작: ${data.active_agents}개 에이전트, ${rounds}라운드`);
+        showToast(`🚀 ${data.active_agents}개 에이전트로 ${mode.label} 시작! (${mode.desc})`);
+        addLogEntry(`${mode.label}: ${data.active_agents}개 에이전트, ${mode.desc}`);
     } else {
         btn.disabled = false;
         btn.innerHTML = '🚀 평가 시작';
         state.isEvaluating = false;
+    }
+}
+
+// ── 일시정지 / 재개 ──
+async function togglePause() {
+    const pauseBtn = document.getElementById('btn-pause');
+    const isPaused = pauseBtn.innerHTML.includes('재개');
+
+    if (isPaused) {
+        const data = await api('/evaluate/resume', { method: 'POST' });
+        if (data) {
+            pauseBtn.innerHTML = '⏸️ 일시정지';
+            pauseBtn.classList.replace('btn-primary', 'btn-outline');
+            showToast('▶️ 평가를 재개합니다.');
+        }
+    } else {
+        const data = await api('/evaluate/pause', { method: 'POST' });
+        if (data) {
+            pauseBtn.innerHTML = '▶️ 평가 재개';
+            pauseBtn.classList.replace('btn-outline', 'btn-primary');
+            showToast('⏸️ 평가를 일시정지했습니다.');
+        }
+    }
+}
+
+// ── 평가 취소 ──
+async function cancelEvaluation() {
+    if (!confirm('평가를 취소하시겠습니까? 지금까지의 진행 내역은 사라집니다.')) return;
+
+    const data = await api('/evaluate/cancel', { method: 'POST' });
+    if (data) {
+        showToast('🛑 평가가 취소되었습니다.');
+        addLogEntry('평가 취소됨');
+        
+        // UI 정리
+        state.isEvaluating = false;
+        const btn = document.getElementById('btn-evaluate');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 평가 시작';
+        
+        // 결과 섹션 숨기기
+        document.getElementById('section-progress').classList.add('hidden');
     }
 }
 
