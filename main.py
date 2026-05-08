@@ -129,6 +129,29 @@ async def list_manuscripts():
     return {"manuscripts": manuscripts}
 
 
+@app.delete("/api/manuscripts/{filename}")
+async def delete_manuscript(filename: str):
+    """원고 파일 삭제"""
+    manuscript_path = config.MANUSCRIPTS_DIR / filename
+    if not manuscript_path.exists():
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"파일을 찾을 수 없습니다: {filename}"},
+        )
+    manuscript_path.unlink()
+    return {"deleted": filename, "message": f"'{filename}' 삭제 완료"}
+
+
+@app.delete("/api/manuscripts")
+async def delete_all_manuscripts():
+    """모든 원고 파일 삭제"""
+    deleted = []
+    for f in config.MANUSCRIPTS_DIR.glob("*.md"):
+        f.unlink()
+        deleted.append(f.name)
+    return {"deleted": deleted, "count": len(deleted), "message": f"{len(deleted)}개 원고 삭제 완료"}
+
+
 @app.post("/api/evaluate/{filename}")
 async def start_evaluation(filename: str, rounds: int = 1):
     """평가 파이프라인 시작"""

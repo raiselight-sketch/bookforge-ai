@@ -451,6 +451,52 @@ body {
     font-size: 0.8rem;
 }
 
+.manuscript-list-item .ms-info {
+    flex: 1;
+    cursor: pointer;
+}
+
+/* 삭제 버튼 */
+.btn-delete-item {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    opacity: 0;
+    transition: all var(--transition-normal);
+    color: var(--text-muted);
+}
+
+.manuscript-list-item:hover .btn-delete-item {
+    opacity: 1;
+}
+
+.btn-delete-item:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+}
+
+.btn-delete-all {
+    background: none;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-family: var(--font-sans);
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.btn-delete-all:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
 /* ── 컨트롤 패널 ── */
 .control-panel {
     display: flex;

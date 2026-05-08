@@ -138,20 +138,54 @@ function renderManuscriptList(manuscripts) {
 
     if (manuscripts.length === 0) return;
 
-    const title = document.createElement('h3');
-    title.textContent = '📚 저장된 원고';
-    title.style.cssText = 'font-size:0.9rem; color:var(--text-secondary); margin-bottom:12px;';
-    container.appendChild(title);
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;';
+    header.innerHTML = `
+        <h3 style="font-size:0.9rem; color:var(--text-secondary); margin:0;">📚 저장된 원고 (${manuscripts.length})</h3>
+        <button class="btn-delete-all" onclick="deleteAllManuscripts()" title="모든 원고 삭제">🗑️ 전체 삭제</button>
+    `;
+    container.appendChild(header);
 
     for (const ms of manuscripts) {
         const item = document.createElement('div');
         item.className = 'manuscript-list-item';
-        item.onclick = () => selectManuscript(ms);
         item.innerHTML = `
-            <div class="ms-name">📄 ${ms.filename}</div>
-            <div class="ms-meta">${ms.total_chapters}개 챕터 · ${(ms.size_bytes / 1024).toFixed(1)}KB</div>
+            <div class="ms-info" onclick="selectManuscript(${JSON.stringify(ms).replace(/"/g, '&quot;')})">
+                <div class="ms-name">📄 ${ms.filename}</div>
+                <div class="ms-meta">${ms.total_chapters}개 챕터 · ${(ms.size_bytes / 1024).toFixed(1)}KB</div>
+            </div>
+            <button class="btn-delete-item" onclick="event.stopPropagation(); deleteManuscript('${ms.filename}')" title="삭제">🗑️</button>
         `;
         container.appendChild(item);
+    }
+}
+
+// ── 원고 삭제 ──
+async function deleteManuscript(filename) {
+    if (!confirm(`"${filename}"을(를) 삭제하시겠습니까?`)) return;
+
+    const data = await api(`/manuscripts/${filename}`, { method: 'DELETE' });
+    if (data) {
+        showToast(`🗑️ ${data.message}`);
+        if (state.selectedManuscript === filename) {
+            state.selectedManuscript = null;
+            document.getElementById('manuscript-info').classList.add('hidden');
+            document.getElementById('section-control').classList.add('hidden');
+        }
+        await loadManuscripts();
+    }
+}
+
+async function deleteAllManuscripts() {
+    if (!confirm('모든 원고를 삭제하시겠습니까?')) return;
+
+    const data = await api('/manuscripts', { method: 'DELETE' });
+    if (data) {
+        showToast(`🗑️ ${data.message}`);
+        state.selectedManuscript = null;
+        document.getElementById('manuscript-info').classList.add('hidden');
+        document.getElementById('section-control').classList.add('hidden');
+        await loadManuscripts();
     }
 }
 
