@@ -22,15 +22,12 @@ class GeminiAgent(BaseAgent):
         return self._client
 
     async def check_connection(self) -> bool:
-        try:
-            client = self._get_client()
-            response = client.models.generate_content(
-                model=self.model_id,
-                contents="간단한 연결 테스트입니다. '연결 성공'이라고만 답하세요."
-            )
-            return bool(response.text)
-        except Exception:
-            return False
+        client = self._get_client()
+        response = client.models.generate_content(
+            model=self.model_id,
+            contents="간단한 연결 테스트입니다. '연결 성공'이라고만 답하세요."
+        )
+        return bool(response.text)
 
     async def _call_api(self, system_prompt: str, user_prompt: str) -> tuple[str, int]:
         import asyncio

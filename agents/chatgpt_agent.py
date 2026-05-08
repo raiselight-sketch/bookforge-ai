@@ -22,16 +22,13 @@ class ChatGPTAgent(BaseAgent):
         return self._client
 
     async def check_connection(self) -> bool:
-        try:
-            client = self._get_client()
-            response = client.chat.completions.create(
-                model=self.model_id,
-                messages=[{"role": "user", "content": "연결 테스트. '성공'이라고만 답하세요."}],
-                max_tokens=10,
-            )
-            return bool(response.choices[0].message.content)
-        except Exception:
-            return False
+        client = self._get_client()
+        response = client.chat.completions.create(
+            model=self.model_id,
+            messages=[{"role": "user", "content": "연결 테스트. '성공'이라고만 답하세요."}],
+            max_tokens=10,
+        )
+        return bool(response.choices[0].message.content)
 
     async def _call_api(self, system_prompt: str, user_prompt: str) -> tuple[str, int]:
         import asyncio

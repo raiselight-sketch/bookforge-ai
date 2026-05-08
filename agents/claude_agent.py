@@ -9,7 +9,7 @@ class ClaudeAgent(BaseAgent):
     def __init__(self):
         super().__init__(
             name="Claude",
-            model_id="claude-sonnet-4-20250514",
+            model_id="claude-4-sonnet-20250514",
             specialty="문학적 깊이 · 문체 일관성 · 표현력",
         )
         self._client = None
@@ -22,16 +22,13 @@ class ClaudeAgent(BaseAgent):
         return self._client
 
     async def check_connection(self) -> bool:
-        try:
-            client = self._get_client()
-            response = client.messages.create(
-                model=self.model_id,
-                max_tokens=20,
-                messages=[{"role": "user", "content": "연결 테스트. '성공'이라고만 답하세요."}],
-            )
-            return bool(response.content[0].text)
-        except Exception:
-            return False
+        client = self._get_client()
+        response = client.messages.create(
+            model=self.model_id,
+            max_tokens=20,
+            messages=[{"role": "user", "content": "연결 테스트. '성공'이라고만 답하세요."}],
+        )
+        return bool(response.content[0].text)
 
     async def _call_api(self, system_prompt: str, user_prompt: str) -> tuple[str, int]:
         import asyncio

@@ -106,10 +106,12 @@ class Orchestrator:
                         "reason": "API 연결 실패",
                     }
             except Exception as e:
+                error_msg = str(e)
+                reason = self._classify_error(error_msg)
                 self.state.agents_status[key] = {
                     "name": model_config.get("name", key),
-                    "status": "error",
-                    "reason": str(e),
+                    "status": "connection_failed",
+                    "reason": reason,
                 }
 
         self._failed_agents.clear()
@@ -118,6 +120,24 @@ class Orchestrator:
     def _get_active_agents(self) -> list[BaseAgent]:
         """현재 활성 상태인 에이전트만 반환 (실패한 에이전트 제외)"""
         return [a for a in self.agents if a.name not in self._failed_agents]
+
+    def _classify_error(self, error_msg: str) -> str:
+        """API 에러 메시지를 사용자 친화적 설명으로 변환"""
+        msg = error_msg.lower()
+        if '429' in msg or 'quota' in msg or 'rate_limit' in msg or 'resource_exhausted' in msg or 'exceeded' in msg:
+            return "⚡ 할당량/크레딧 소진 — 잠시 후 재시도하거나 크레딧을 충전하세요"
+        elif '401' in msg or 'authentication' in msg or 'unauthorized' in msg or 'invalid api key' in msg or 'incorrect api key' in msg:
+            return "🔑 API 키 인증 실패 — .env 파일의 키를 확인하세요"
+        elif '403' in msg or 'forbidden' in msg or 'permission' in msg:
+            return "🚫 접근 권한 없음 — API 키의 권한을 확인하세요"
+        elif 'api_key_invalid' in msg or 'api key not found' in msg:
+            return "🔑 유효하지 않은 API 키 — 새 키를 발급받으세요"
+        elif 'connection' in msg or 'timeout' in msg or 'unreachable' in msg:
+            return "🌐 네트워크 연결 실패 — 인터넷 연결을 확인하세요"
+        elif 'model' in msg and ('not found' in msg or 'does not exist' in msg):
+            return "🤖 지원하지 않는 모델 — config.py에서 모델명을 확인하세요"
+        else:
+            return f"❌ 연결 실패: {error_msg[:80]}"
 
     def _handle_agent_error(self, agent_name: str, error: str):
         """에이전트 오류 처리 — 크레딧 소진/rate limit 시 자동 비활성화"""

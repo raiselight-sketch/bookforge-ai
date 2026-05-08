@@ -140,22 +140,50 @@ function renderManuscriptList(manuscripts) {
 
     const header = document.createElement('div');
     header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;';
-    header.innerHTML = `
-        <h3 style="font-size:0.9rem; color:var(--text-secondary); margin:0;">📚 저장된 원고 (${manuscripts.length})</h3>
-        <button class="btn-delete-all" onclick="deleteAllManuscripts()" title="모든 원고 삭제">🗑️ 전체 삭제</button>
-    `;
+
+    const title = document.createElement('h3');
+    title.style.cssText = 'font-size:0.9rem; color:var(--text-secondary); margin:0;';
+    title.textContent = `📚 저장된 원고 (${manuscripts.length})`;
+
+    const deleteAllBtn = document.createElement('button');
+    deleteAllBtn.className = 'btn-delete-all';
+    deleteAllBtn.textContent = '🗑️ 전체 삭제';
+    deleteAllBtn.title = '모든 원고 삭제';
+    deleteAllBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteAllManuscripts();
+    });
+
+    header.appendChild(title);
+    header.appendChild(deleteAllBtn);
     container.appendChild(header);
 
-    for (const ms of manuscripts) {
+    for (let i = 0; i < manuscripts.length; i++) {
+        const ms = manuscripts[i];
         const item = document.createElement('div');
         item.className = 'manuscript-list-item';
-        item.innerHTML = `
-            <div class="ms-info" onclick="selectManuscript(${JSON.stringify(ms).replace(/"/g, '&quot;')})">
-                <div class="ms-name">📄 ${ms.filename}</div>
-                <div class="ms-meta">${ms.total_chapters}개 챕터 · ${(ms.size_bytes / 1024).toFixed(1)}KB</div>
-            </div>
-            <button class="btn-delete-item" onclick="event.stopPropagation(); deleteManuscript('${ms.filename}')" title="삭제">🗑️</button>
+
+        const info = document.createElement('div');
+        info.className = 'ms-info';
+        info.innerHTML = `
+            <div class="ms-name">📄 ${ms.filename}</div>
+            <div class="ms-meta">${ms.total_chapters}개 챕터 · ${(ms.size_bytes / 1024).toFixed(1)}KB</div>
         `;
+        info.addEventListener('click', () => selectManuscript(ms));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-item';
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.title = '삭제';
+        deleteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            deleteManuscript(ms.filename);
+        });
+
+        item.appendChild(info);
+        item.appendChild(deleteBtn);
         container.appendChild(item);
     }
 }

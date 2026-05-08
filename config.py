@@ -62,7 +62,7 @@ MODELS = {
     },
     "claude": {
         "name": "Claude",
-        "model_id": "claude-sonnet-4-latest",
+        "model_id": "claude-4-sonnet-20250514",
         "color": "#D97706",
         "icon": "🟣",
         "specialty": "문학적 깊이 · 문체 일관성 · 표현력",
