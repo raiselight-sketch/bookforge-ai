@@ -65,6 +65,7 @@ class Orchestrator:
 
     def __init__(self):
         self.agents: list[BaseAgent] = []
+        self._failed_agents: set = set()  # 실행 중 실패한 에이전트 추적
         self.state = PipelineState()
         self._progress_callbacks: list[callable] = []
 
@@ -111,7 +112,21 @@ class Orchestrator:
                     "reason": str(e),
                 }
 
+        self._failed_agents.clear()
         return len(self.agents) > 0
+
+    def _get_active_agents(self) -> list[BaseAgent]:
+        """현재 활성 상태인 에이전트만 반환 (실패한 에이전트 제외)"""
+        return [a for a in self.agents if a.name not in self._failed_agents]
+
+    def _handle_agent_error(self, agent_name: str, error: str):
+        """에이전트 오류 처리 — 크레딧 소진/rate limit 시 자동 비활성화"""
+        rate_limit_keywords = ['429', 'quota', 'rate_limit', 'RESOURCE_EXHAUSTED', 'exceeded']
+        if any(kw.lower() in error.lower() for kw in rate_limit_keywords):
+            self._failed_agents.add(agent_name)
+            self.state.errors.append(f"⚠️ {agent_name}: 크레딧/할당량 소진 → 자동 스킵")
+            return True  # 스킵 가능
+        return False  # 다른 종류의 오류
 
     def add_progress_callback(self, callback: callable):
         """진행 상태 변경 시 호출될 콜백 등록"""
@@ -237,26 +252,40 @@ class Orchestrator:
                     self._update_progress()
                     await self._notify_progress()
 
-                    # 모든 에이전트가 동시에 평가
+                    # 활성 에이전트만 평가 (실패한 에이전트 자동 스킵)
+                    active_agents = self._get_active_agents()
+                    if not active_agents:
+                        self.state.status = "error"
+                        self.state.errors.append("모든 에이전트가 비활성화되었습니다.")
+                        return self.state
+
                     eval_tasks = []
-                    for agent in self.agents:
+                    eval_agent_names = []
+                    for agent in active_agents:
                         self.state.current_agent = agent.name
                         await self._notify_progress()
                         eval_tasks.append(
                             agent.evaluate(chapter.content, chapter.title)
                         )
+                        eval_agent_names.append(agent.name)
 
                     results = await asyncio.gather(*eval_tasks, return_exceptions=True)
 
                     chapter_evals = []
-                    for result in results:
+                    for i, result in enumerate(results):
+                        agent_name = eval_agent_names[i] if i < len(eval_agent_names) else "unknown"
                         if isinstance(result, Exception):
+                            error_str = str(result)
+                            self._handle_agent_error(agent_name, error_str)
                             chapter_evals.append(
                                 EvaluationResult(
-                                    agent_name="unknown",
-                                    error=str(result),
+                                    agent_name=agent_name,
+                                    error=error_str,
                                 ).to_dict()
                             )
+                        elif result.error:
+                            self._handle_agent_error(agent_name, result.error)
+                            chapter_evals.append(result.to_dict())
                         else:
                             chapter_evals.append(result.to_dict())
 
@@ -277,8 +306,9 @@ class Orchestrator:
 
                         prev_evals = round_result.evaluations[ch_idx]["evaluations"]
 
+                        active_agents = self._get_active_agents()
                         review_tasks = []
-                        for agent in self.agents:
+                        for agent in active_agents:
                             self.state.current_agent = agent.name
                             await self._notify_progress()
                             review_tasks.append(
@@ -290,6 +320,7 @@ class Orchestrator:
                         chapter_reviews = []
                         for review in reviews:
                             if isinstance(review, Exception):
+                                self._handle_agent_error("unknown", str(review))
                                 chapter_reviews.append(
                                     CrossReviewResult(
                                         agent_name="unknown",
@@ -309,8 +340,11 @@ class Orchestrator:
                     self.state.current_phase = "improving"
                     await self._notify_progress()
 
-                    # 가장 좋은 성능의 에이전트로 개선 실행
-                    improver = self.agents[0]  # 첫 번째 사용 가능한 에이전트
+                    # 활성 에이전트 중 첫 번째로 개선 실행
+                    active_agents = self._get_active_agents()
+                    if not active_agents:
+                        continue
+                    improver = active_agents[0]
 
                     for ch_idx, chapter in enumerate(chapters):
                         self.state.current_chapter = ch_idx + 1

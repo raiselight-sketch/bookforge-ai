@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+_env_path = Path(__file__).parent / ".env"
+load_dotenv(_env_path, override=True)
 
 # ── 프로젝트 경로 ──
 BASE_DIR = Path(__file__).parent
