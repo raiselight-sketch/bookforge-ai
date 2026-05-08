@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookForge AI — 멀티에이전트 출판 시스템</title>
+    <meta name="description" content="4개 AI 에이전트가 서로 평가하고 개선하여 출판 수준의 원고를 완성하는 범용 AI 출판 플랫폼">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- ────── 헤더 ────── -->
+    <header id="app-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <div class="logo-icon">📚</div>
+                <div class="logo-text">
+                    <h1>BookForge AI</h1>
+                    <p class="subtitle">AI 멀티에이전트 출판 시스템</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div id="agent-indicators" class="agent-indicators"></div>
+                <button id="btn-init" class="btn btn-primary" onclick="initializeAgents()">
+                    🔌 에이전트 연결
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ────── 메인 컨텐츠 ────── -->
+    <main id="app-main">
+        <!-- ── 에이전트 상태 패널 ── -->
+        <section id="section-agents" class="section">
+            <h2 class="section-title">🤖 AI 에이전트 패널</h2>
+            <div id="agent-cards" class="agent-cards-grid"></div>
+        </section>
+
+        <!-- ── 원고 업로드 ── -->
+        <section id="section-upload" class="section">
+            <h2 class="section-title">📄 원고 관리</h2>
+            <div class="upload-area" id="upload-area">
+                <div class="upload-dropzone" id="dropzone"
+                     ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">마크다운(.md) 파일을 드래그하거나 클릭하세요</p>
+                    <input type="file" id="file-input" accept=".md,.txt" onchange="handleFileSelect(event)" hidden>
+                    <button class="btn btn-outline" onclick="document.getElementById('file-input').click()">
+                        파일 선택
+                    </button>
+                </div>
+                <div id="manuscript-info" class="manuscript-info hidden"></div>
+            </div>
+            <!-- 저장된 원고 목록 -->
+            <div id="manuscript-list" class="manuscript-list"></div>
+        </section>
+
+        <!-- ── 평가 컨트롤 ── -->
+        <section id="section-control" class="section hidden">
+            <h2 class="section-title">⚙️ 평가 설정</h2>
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="rounds-select">평가 라운드 수</label>
+                    <select id="rounds-select" class="select-input">
+                        <option value="1">1 라운드 (빠른 평가)</option>
+                        <option value="2">2 라운드 (교차 검토 포함)</option>
+                        <option value="3" selected>3 라운드 (완전 평가)</option>
+                    </select>
+                </div>
+                <button id="btn-evaluate" class="btn btn-accent btn-lg" onclick="startEvaluation()">
+                    🚀 평가 시작
+                </button>
+            </div>
+        </section>
+
+        <!-- ── 진행 상태 ── -->
+        <section id="section-progress" class="section hidden">
+            <h2 class="section-title">📊 평가 진행</h2>
+            <div class="progress-panel">
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+                    <span id="progress-text" class="progress-text">0%</span>
+                </div>
+                <div class="progress-details">
+                    <div class="progress-detail">
+                        <span class="label">라운드</span>
+                        <span id="progress-round" class="value">-</span>
+                    </div>
+                    <div class="progress-detail">
+                        <span class="label">단계</span>
+                        <span id="progress-phase" class="value">-</span>
+                    </div>
+                    <div class="progress-detail">
+                        <span class="label">챕터</span>
+                        <span id="progress-chapter" class="value">-</span>
+                    </div>
+                    <div class="progress-detail">
+                        <span class="label">활성 에이전트</span>
+                        <span id="progress-agent" class="value">-</span>
+                    </div>
+                </div>
+                <div id="progress-log" class="progress-log"></div>
+            </div>
+        </section>
+
+        <!-- ── 결과 대시보드 ── -->
+        <section id="section-results" class="section hidden">
+            <h2 class="section-title">📈 평가 결과</h2>
+
+            <!-- 종합 점수 카드 -->
+            <div id="score-cards" class="score-cards-grid"></div>
+
+            <!-- 레이더 차트 -->
+            <div class="chart-container">
+                <canvas id="radar-chart"></canvas>
+            </div>
+
+            <!-- 챕터별 상세 -->
+            <div id="chapter-results" class="chapter-results"></div>
+
+            <!-- AI 코멘트 -->
+            <div id="ai-comments" class="ai-comments"></div>
+        </section>
+    </main>
+
+    <!-- ────── 푸터 ────── -->
+    <footer id="app-footer">
+        <p>BookForge AI v1.0 · Gemini · ChatGPT · Claude · Gemma4</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
